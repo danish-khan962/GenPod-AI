@@ -6,6 +6,7 @@ import comedian from "./comedian.jpg"
 import academic from "./academic.jpg"
 import entrepeneur from "./entrepeneur.jpg"
 import journalist from "./journalist.jpg"
+import favicon from "./favicon.png"
 
 export const assets = {
     logo,
@@ -16,4 +17,5 @@ export const assets = {
     academic,
     entrepeneur,
     journalist,
+    favicon,
 }
