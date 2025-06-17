@@ -1,9 +1,7 @@
 import React, { useState } from 'react';
 import MiniTitle from './MiniTitle';
 
-const EpisodeSettings = () => {
-  const [hosts, setHosts] = useState(null);
-  const [length, setLength] = useState(null); 
+const EpisodeSettings = ({hosts, setHosts, length, setLength}) => {
 
   return (
     <section className='flex flex-col px-6 md:px-16 lg:px-36 py-4'>

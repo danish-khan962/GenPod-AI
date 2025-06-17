@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 
-const HostCards = ({ image, hostType }) => {
-  const [isSelected, setIsSelected] = useState(false);
+const HostCards = ({ image, hostType , selectedHost, setSelectedHost}) => {
+
+  const isSelected = selectedHost === hostType;
 
   const toggleSelect = () => {
-    setIsSelected(!isSelected);
+    setSelectedHost(hostType);
   };
 
   return (

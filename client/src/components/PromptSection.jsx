@@ -7,6 +7,8 @@ import { assets } from '../assets/assets';
 
 const PromptSection = ({prompt, setPrompt}) => {
 
+
+    const [selectedHost, setSelectedHost] = useState("");
     const suggestions = ["AI in healthcare", "Web3", "Digital Nomads"];
 
     return (
@@ -41,12 +43,12 @@ const PromptSection = ({prompt, setPrompt}) => {
                 <MiniTitle text={"Choose Host Style"} />
 
                 <div className='grid grid-cols-2 gap-3 mt-4'>
-                    <HostCards image={assets.techExpert} hostType={"Tech Expert"} />
-                    <HostCards image={assets.philospher} hostType={"Philospher"} />
-                    <HostCards image={assets.comedian} hostType={"Comedian"} />
-                    <HostCards image={assets.academic} hostType={"Academic"} />
-                    <HostCards image={assets.entrepeneur} hostType={"Entrepeneur"} />
-                    <HostCards image={assets.journalist} hostType={"Journalist"} />
+                    <HostCards image={assets.techExpert} hostType={"Tech Expert"} selectedHost={selectedHost} setSelectedHost={setSelectedHost}/>
+                    <HostCards image={assets.philospher} hostType={"Philospher"} selectedHost={selectedHost} setSelectedHost={setSelectedHost}/>
+                    <HostCards image={assets.comedian} hostType={"Comedian"} selectedHost={selectedHost} setSelectedHost={setSelectedHost}/>
+                    <HostCards image={assets.academic} hostType={"Academic"} selectedHost={selectedHost} setSelectedHost={setSelectedHost}/>
+                    <HostCards image={assets.entrepeneur} hostType={"Entrepeneur"} selectedHost={selectedHost} setSelectedHost={setSelectedHost}/>
+                    <HostCards image={assets.journalist} hostType={"Journalist"} selectedHost={selectedHost} setSelectedHost={setSelectedHost}/>
                 </div>
             </div>
 

@@ -7,6 +7,7 @@ import {useNavigate} from "react-router-dom"
 const PreviewSection = () => {
 
     const [togglePlayPause, setTogglePlayPause] = useState(false);
+    const [transcript, setTranscript] = useState("");
     
 
     const navigate = useNavigate();
@@ -21,7 +22,7 @@ const PreviewSection = () => {
             <div className='w-full bg-gray_2/15 p-5 rounded-md'>
                 <MiniTitle text={"Preview Transcript"} />
 
-                <textarea name="preview" id="previewTranscript" className='p-3 bg-backgroundColor_2/60 outline-none w-full resize-none rounded-md mt-3 text-sm' rows={8} ></textarea>
+                <textarea name="preview" id="previewTranscript" className='p-3 bg-backgroundColor_2/60 outline-none w-full resize-none rounded-md mt-3 text-sm' rows={8} readOnly value={transcript} onChange={(e)=> setTranscript(e.target.value)}></textarea>
 
                 <div className='flex flex-row justify-between items-center mt-4'>
                     <p className='text-xs text-gray_2'>Approx Time: 10:32</p>
@@ -40,7 +41,7 @@ const PreviewSection = () => {
                 </div>
 
                 <div className='mt-3'>
-                    <textarea name="" id="" className='p-3 bg-backgroundColor_2/60 outline-none w-full resize-none rounded-md mt-3 text-sm ' rows={3} ></textarea>
+                    <textarea name="" id="" className='p-3 bg-backgroundColor_2/60 outline-none w-full resize-none rounded-md mt-3 text-sm ' rows={3} readOnly></textarea>
                 </div>
 
                 <div className='flex flex-row justify-between items-center mt-2'>
