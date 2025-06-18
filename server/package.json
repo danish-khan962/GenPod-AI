@@ -1,0 +1,35 @@
+{
+  "name": "server",
+  "version": "1.0.0",
+  "description": "This is Backend repo/folder specially build for GenPod-AI project....",
+  "keywords": [
+    "Backend",
+    "node.js",
+    "express.js",
+    "mongoose",
+    "MongoDB",
+    "GenPod",
+    "Podcast",
+    "AI",
+    "api"
+  ],
+  "license": "ISC",
+  "author": "Danish Khan",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "nodemon server.js"
+  },
+  "dependencies": {
+    "@clerk/clerk-sdk-node": "^4.13.23",
+    "axios": "^1.10.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.5.0",
+    "express": "^5.1.0",
+    "mongodb": "^6.17.0",
+    "mongoose": "^8.16.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10"
+  }
+}
