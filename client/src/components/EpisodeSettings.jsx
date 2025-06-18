@@ -31,7 +31,7 @@ const EpisodeSettings = ({hosts, setHosts, length, setLength}) => {
         <div className='mt-2'>
           <p className='text-sm'>Episode Length</p>
           <div className='flex flex-row gap-4 mt-2'>
-            {['5min', '10min', '15+min'].map((len) => (
+            {[5,10,15].map((len) => (
               <button
                 key={len}
                 className={`text-xs px-2 py-1 rounded-lg ${

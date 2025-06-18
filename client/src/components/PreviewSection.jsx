@@ -1,62 +1,163 @@
-import React, { useState } from 'react'
-import MiniTitle from './MiniTitle'
+import React, { useEffect, useRef, useState } from 'react';
+import MiniTitle from './MiniTitle';
 import { FaPause, FaPlay } from "react-icons/fa6";
 import { IoIosArrowForward } from "react-icons/io";
-import {useNavigate} from "react-router-dom"
+import { useNavigate } from "react-router-dom";
+import WaveSurfer from 'wavesurfer.js';
+import axios from 'axios';
+import { useAuth } from '@clerk/clerk-react';
 
-const PreviewSection = () => {
+const PreviewSection = ({ prompt, hosts, length, transcript, setTranscript }) => {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [audioUrl, setAudioUrl] = useState('');
+  const [loading, setLoading] = useState(false);
 
-    const [togglePlayPause, setTogglePlayPause] = useState(false);
-    const [transcript, setTranscript] = useState("");
-    
+  const waveformRef = useRef(null);
+  const wavesurfer = useRef(null);
+  const navigate = useNavigate();
+  const { getToken } = useAuth();
 
-    const navigate = useNavigate();
+  // Initialize WaveSurfer when audioUrl changes
+  useEffect(() => {
+    if (audioUrl && waveformRef.current) {
+      if (wavesurfer.current) {
+        wavesurfer.current.destroy();
+      }
 
-    const toggleFunction = () => {
-        setTogglePlayPause(!togglePlayPause);
+      wavesurfer.current = WaveSurfer.create({
+        container: waveformRef.current,
+        waveColor: "#bbb",
+        progressColor: "#4ade80",
+        cursorColor: "#333",
+        height: 80,
+        responsive: true,
+      });
+
+      wavesurfer.current.load(audioUrl);
+      wavesurfer.current.on("finish", () => setIsPlaying(false));
     }
 
-    return (
-        <section className='flex flex-col px-6 md:px-16 lg:px-36 py-4 gap-8'>
+    return () => {
+      if (wavesurfer.current) {
+        wavesurfer.current.destroy();
+        wavesurfer.current = null;
+      }
+    };
+  }, [audioUrl]);
 
-            <div className='w-full bg-gray_2/15 p-5 rounded-md'>
-                <MiniTitle text={"Preview Transcript"} />
+  // Toggle playback
+  const togglePlayPause = () => {
+    if (wavesurfer.current) {
+      wavesurfer.current.playPause();
+      setIsPlaying(prev => !prev);
+    }
+  };
 
-                <textarea name="preview" id="previewTranscript" className='p-3 bg-backgroundColor_2/60 outline-none w-full resize-none rounded-md mt-3 text-sm' rows={8} readOnly value={transcript} onChange={(e)=> setTranscript(e.target.value)}></textarea>
+  // Generate transcript + TTS audio
+  const handleGenerateEpisode = async () => {
+    if (!prompt || !hosts || !length) {
+      alert('Please fill in all episode settings.');
+      return;
+    }
 
-                <div className='flex flex-row justify-between items-center mt-4'>
-                    <p className='text-xs text-gray_2'>Approx Time: 10:32</p>
-                    <button className='text-sm bg-primary text-black px-3 py-2 rounded-md transition-all ease-in-out duration-300 hover:bg-primary-dull'>Generate Episode</button>
-                </div>
-            </div>
+    try {
+      setLoading(true);
 
-            <div className=' w-full bg-gray_2/15 p-5 rounded-md'>
-                <div className='flex flex-row justify-between items-center'>
-                    <MiniTitle text={"Preview Playback"} />
-                    {togglePlayPause ? (
-                        <FaPause onClick={toggleFunction} className='cursor-pointer' />
-                    ) : (
-                        <FaPlay onClick={toggleFunction} className='cursor-pointer' />
-                    )}
-                </div>
+      // Generate GPT transcript + TTS audio
+      const generateResponse = await axios.post('/api/episodes/generate', {
+        prompt,
+        hosts: Number(hosts),
+        length,
+      });
 
-                <div className='mt-3'>
-                    <textarea name="" id="" className='p-3 bg-backgroundColor_2/60 outline-none w-full resize-none rounded-md mt-3 text-sm ' rows={3} readOnly></textarea>
-                </div>
+      const { transcript, audioUrl } = generateResponse.data;
+      setTranscript(transcript);
+      setAudioUrl(audioUrl);
 
-                <div className='flex flex-row justify-between items-center mt-2'>
-                    <p className='text-xs text-gray_2'>0:00</p>
-                    <p className='text-xs text-gray_2'>10:32</p>
-                </div>
+      // Save episode to DB
+      const token = await getToken();
+      await axios.post(
+        '/api/episodes',
+        { prompt, hosts, length, transcript, audioUrl },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+    } catch (error) {
+      console.error('Error generating/saving episode:', error?.response?.data || error.message);
+      alert('Something went wrong. Try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-            </div>
+  return (
+    <section className='flex flex-col px-6 md:px-16 lg:px-36 py-4 gap-8'>
+      {/* Transcript Section */}
+      <div className='w-full bg-gray_2/15 p-5 rounded-md'>
+        <MiniTitle text="Preview Transcript" />
+        <textarea
+          className='p-3 bg-backgroundColor_2/60 outline-none w-full resize-none rounded-md mt-3 text-sm'
+          rows={8}
+          readOnly
+          value={transcript}
+        />
+        <div className='flex justify-between items-center mt-4'>
+          <p className='text-xs text-gray_2'>Approx Time: {length || '--:--'}</p>
+          <button
+            className='text-sm bg-primary text-black px-3 py-2 rounded-md hover:bg-primary-dull transition-all disabled:opacity-60'
+            onClick={handleGenerateEpisode}
+            disabled={loading}
+          >
+            {loading ? 'Generating...' : 'Generate Episode'}
+          </button>
+        </div>
+      </div>
 
-            <div className='mt-3'>
-                <button className='font-semibold bg-primary px-8 py-2 rounded-md transition-all ease-in-out duration-300 hover:bg-primary-dull cursor-pointer text-black' onClick={()=> {navigate("/library"); window.scrollTo(0,0)}}>View All Episodes <IoIosArrowForward className='h-5 w-5 inline-flex ml-2'/></button>
-            </div>
+      {/* Audio Player Section */}
+      {audioUrl && (
+        <div className='w-full bg-gray_2/15 p-5 rounded-md'>
+          <div className='flex justify-between items-center'>
+            <MiniTitle text="Preview Playback" />
+            {isPlaying ? (
+              <FaPause onClick={togglePlayPause} className='cursor-pointer' />
+            ) : (
+              <FaPlay onClick={togglePlayPause} className='cursor-pointer' />
+            )}
+          </div>
 
-        </section >
-    )
-}
+          {/* WaveSurfer container */}
+          <div ref={waveformRef} className='mt-4 rounded-md overflow-hidden' />
 
-export default PreviewSection
+          {/* Short Transcript Preview */}
+          <textarea
+            className='p-3 bg-backgroundColor_2/60 outline-none w-full resize-none rounded-md mt-3 text-sm'
+            rows={3}
+            readOnly
+            value={transcript ? transcript.slice(0, 150) + '...' : ''}
+          />
+
+          <div className='flex justify-between text-xs text-gray_2 mt-2'>
+            <span>0:00</span>
+            <span>{length || '--:--'}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Navigation */}
+      <div className='mt-3'>
+        <button
+          className='font-semibold bg-primary px-8 py-2 rounded-md transition-all hover:bg-primary-dull text-black'
+          onClick={() => {
+            navigate("/library");
+            window.scrollTo(0, 0);
+          }}
+        >
+          View All Episodes <IoIosArrowForward className='inline-block ml-2 h-5 w-5' />
+        </button>
+      </div>
+    </section>
+  );
+};
+
+export default PreviewSection;
