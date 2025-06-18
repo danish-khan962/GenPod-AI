@@ -10,10 +10,10 @@ import { authenticateRequest } from "../middlewares/auth.middlewares.js";
 
 const router = express.Router();
 
-// Public
+// Public route (for ElevenLabs generation)
 router.post("/generate", generateEpisode);
 
-// Protected
+// Protected routes
 router.post("/", authenticateRequest, createEpisode);
 router.post("/save", authenticateRequest, saveEpisode);
 router.get("/", authenticateRequest, getUserEpisodes);

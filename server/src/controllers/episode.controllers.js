@@ -3,31 +3,34 @@ import { Episode } from "../models/episode.models.js";
 import cloudinary from "../config/cloudinary.js";
 import fs from 'fs/promises';
 import path from 'path';
+import axios from "axios";
 import { fileURLToPath } from 'url';
-import OpenAI from "openai";
-import { dirname } from 'path';
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // CREATE
 export const createEpisode = async (req, res) => {
-  try {
-    const userId = req.user.sub;
-    const { title, transcript, audioUrl, duration, hosts, length } = req.body;
+  const userId = req.auth?.userId;
 
-    if (!title || !audioUrl) {
-      return res.status(400).json({ message: "Missing required fields" });
-    }
-
-    const newEpisode = await Episode.create({ userId, title, transcript, audioUrl, duration, hosts, length });
-
-    res.status(201).json(newEpisode);
-  } catch (error) {
-    console.error("Error creating episode:", error);
-    res.status(500).json({ message: "Failed to create episode" });
+  if (!userId) {
+    return res.status(403).json({ message: "Unauthorized" });
   }
+
+  const { prompt, hosts, length, transcript, audioUrl } = req.body;
+
+  // Save to DB (e.g., MongoDB)
+  const episode = await EpisodeModel.create({
+    userId,
+    prompt,
+    hosts,
+    length,
+    transcript,
+    audioUrl,
+  });
+
+  res.status(200).json(episode);
 };
+
 
 // READ
 export const getUserEpisodes = async (req, res) => {
@@ -61,47 +64,41 @@ export const deleteEpisode = async (req, res) => {
   }
 };
 
-// AI GENERATION - PUBLIC
+// AI GENERATION using ElevenLabs
 export const generateEpisode = async (req, res) => {
   try {
-    const { prompt, hosts, length } = req.body;
+    const { transcript, voiceId = "SAz9YHcvj6GT2YYXdXww" } = req.body;
 
-    if (!prompt || !hosts || !length) {
-      return res.status(400).json({ message: "Missing fields" });
+    if (!transcript) {
+      return res.status(400).json({ message: "Transcript is required" });
     }
 
-    // 1. Generate Transcript with GPT
-    const chatCompletion = await openai.chat.completions.create({
-      messages: [
-        {
-          role: "system",
-          content: `You are a podcast script writer. Generate an engaging transcript for a ${length}-minute episode with ${hosts} host(s) about: ${prompt}`,
+    const apiKey = process.env.ELEVENLABS_API_KEY;
+    const voice = voiceId; // default voice or pass custom from client
+
+    const response = await axios.post(
+      `https://api.elevenlabs.io/v1/text-to-speech/${voice}`,
+      {
+        text: transcript,
+        model_id: "eleven_monolingual_v1",
+        voice_settings: {
+          stability: 0.5,
+          similarity_boost: 0.75,
         },
-        { role: "user", content: `Start with a hook, include main points, and wrap up naturally.` },
-      ],
-      model: "gpt-3.5-turbo",
-    });
-
-    const transcript = chatCompletion.choices[0].message.content;
-
-    // 2. Generate TTS Audio
-    const speechResponse = await openai.audio.speech.create({
-      model: "tts-1",
-      voice: "nova",
-      input: transcript,
-    });
+      },
+      {
+        headers: {
+          "xi-api-key": apiKey,
+          "Content-Type": "application/json",
+        },
+        responseType: "arraybuffer",
+      }
+    );
 
     const localAudioPath = path.resolve(__dirname, '../temp/generated-episode.mp3');
-    const stream = speechResponse.body;
-    const chunks = [];
-    for await (const chunk of stream) {
-      chunks.push(chunk);
-    }
-    const buffer = Buffer.concat(chunks);
-    await fs.writeFile(localAudioPath, buffer);
+    await fs.writeFile(localAudioPath, Buffer.from(response.data));
 
-
-    // 3. Upload to Cloudinary
+    // Upload to Cloudinary
     const uploadResult = await cloudinary.uploader.upload(localAudioPath, {
       resource_type: "video",
       folder: "genpod-audio",
@@ -111,8 +108,8 @@ export const generateEpisode = async (req, res) => {
 
     res.status(200).json({ transcript, audioUrl: uploadResult.secure_url });
   } catch (error) {
-    console.error("Error generating/saving episode:", error?.response?.data || error.message || error);
-    res.status(500).json({ message: "Generation failed" });
+    console.error("Error generating episode:", error?.response?.data || error.message);
+    res.status(500).json({ message: "Failed to generate episode" });
   }
 };
 

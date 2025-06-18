@@ -7,7 +7,7 @@ import WaveSurfer from 'wavesurfer.js';
 import axios from 'axios';
 import { useAuth } from '@clerk/clerk-react';
 
-const PreviewSection = ({ prompt, hosts, length, transcript, setTranscript }) => {
+const PreviewSection = ({ transcript, setTranscript }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [audioUrl, setAudioUrl] = useState('');
   const [loading, setLoading] = useState(false);
@@ -45,7 +45,6 @@ const PreviewSection = ({ prompt, hosts, length, transcript, setTranscript }) =>
     };
   }, [audioUrl]);
 
-  // Toggle playback
   const togglePlayPause = () => {
     if (wavesurfer.current) {
       wavesurfer.current.playPause();
@@ -53,32 +52,29 @@ const PreviewSection = ({ prompt, hosts, length, transcript, setTranscript }) =>
     }
   };
 
-  // Generate transcript + TTS audio
   const handleGenerateEpisode = async () => {
-    if (!prompt || !hosts || !length) {
-      alert('Please fill in all episode settings.');
+    if (!transcript.trim()) {
+      alert('Please paste a transcript before generating.');
       return;
     }
 
     try {
       setLoading(true);
 
-      // Generate GPT transcript + TTS audio
+      // Generate audio from ElevenLabs via backend
       const generateResponse = await axios.post('/api/episodes/generate', {
-        prompt,
-        hosts: Number(hosts),
-        length,
+        transcript,
+        voiceId: 'SAz9YHcvj6GT2YYXdXww', // Optional: make this dynamic later
       });
 
-      const { transcript, audioUrl } = generateResponse.data;
-      setTranscript(transcript);
+      const { audioUrl } = generateResponse.data;
       setAudioUrl(audioUrl);
 
-      // Save episode to DB
+      // Save to database
       const token = await getToken();
       await axios.post(
         '/api/episodes',
-        { prompt, hosts, length, transcript, audioUrl },
+        { transcript, audioUrl },
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -93,17 +89,18 @@ const PreviewSection = ({ prompt, hosts, length, transcript, setTranscript }) =>
 
   return (
     <section className='flex flex-col px-6 md:px-16 lg:px-36 py-4 gap-8'>
-      {/* Transcript Section */}
+      {/* Transcript Input Section */}
       <div className='w-full bg-gray_2/15 p-5 rounded-md'>
-        <MiniTitle text="Preview Transcript" />
+        <MiniTitle text="Paste Transcript" />
         <textarea
           className='p-3 bg-backgroundColor_2/60 outline-none w-full resize-none rounded-md mt-3 text-sm'
           rows={8}
-          readOnly
           value={transcript}
+          onChange={(e) => setTranscript(e.target.value)}
+          placeholder="Paste your transcript here..."
         />
         <div className='flex justify-between items-center mt-4'>
-          <p className='text-xs text-gray_2'>Approx Time: {length || '--:--'}</p>
+          <p className='text-xs text-gray_2'>Transcript Length: {transcript.length} chars</p>
           <button
             className='text-sm bg-primary text-black px-3 py-2 rounded-md hover:bg-primary-dull transition-all disabled:opacity-60'
             onClick={handleGenerateEpisode}
@@ -126,20 +123,18 @@ const PreviewSection = ({ prompt, hosts, length, transcript, setTranscript }) =>
             )}
           </div>
 
-          {/* WaveSurfer container */}
           <div ref={waveformRef} className='mt-4 rounded-md overflow-hidden' />
 
-          {/* Short Transcript Preview */}
           <textarea
             className='p-3 bg-backgroundColor_2/60 outline-none w-full resize-none rounded-md mt-3 text-sm'
             rows={3}
+            value={transcript.slice(0, 150) + '...'}
             readOnly
-            value={transcript ? transcript.slice(0, 150) + '...' : ''}
           />
 
           <div className='flex justify-between text-xs text-gray_2 mt-2'>
             <span>0:00</span>
-            <span>{length || '--:--'}</span>
+            <span>~{Math.ceil(transcript.split(' ').length / 2.5)} sec</span>
           </div>
         </div>
       )}
